@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ichiriac/modular.git"
+    "url": "https://github.com/m0dul4r/modular.git"
   },
   "author": "Ioan CHIRIAC",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ichiriac/modular/issues"
+    "url": "https://github.com/m0dul4r/modular/issues"
   },
-  "homepage": "https://github.com/ichiriac/modular",
+  "homepage": "https://github.com/m0dul4r/modular",
   "dependencies": {
     "lodash": "^2.4.1"
   }
