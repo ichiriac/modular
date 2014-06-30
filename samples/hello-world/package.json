@@ -1,0 +1,24 @@
+{
+  "name": "hello-world",
+  "version": "0.0.0",
+  "main": "app.js",
+  "dependencies": {
+    "modular": "latest"
+  },
+  "modular": {
+    "contains": {
+      "web": "./modules/web/",
+      "plugin": "./modules/plugin/"
+    },
+    "using": {
+      "web": {
+        "mod-web-express": "latest",
+        "mod-web-swig": "latest"
+      },
+      "plugin": {
+        "hello": "latest",
+        "world": "latest"
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "mod-web-express",
+  "version": "0.0.0",
+  "main": "app.js",
+  "modular": {
+    "provides": {
+      "web": "app"
+    }
+  },
+  "dependencies": {
+    "express": "^4.0.0",
+    "connect-flash": "^0.1.1",
+    "view-helpers": "^0.1.4",
+    "compression": "^1.0.1",
+    "cookie-parser": "^1.0.1",
+    "body-parser": "^1.0.2",
+    "method-override": "^1.0.0"
+  }
+}

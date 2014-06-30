@@ -1,0 +1,13 @@
+{
+  "name": "hello",
+  "version": "0.0.0",
+  "main": "hello.js",
+  "modular": {
+    "provides": {
+      "plugin": "hello"
+    },
+    "imports": [
+      "web.app"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "world",
+  "version": "0.0.0",
+  "main": "world.js",
+  "modular": {
+    "provides": {
+      "plugin": "world"
+    },
+    "imports": [
+      "web.app"
+    ]
+  }
+}
