@@ -1,6 +1,6 @@
 
 // initialize the application
-var app = require('../../modular')(
+var app = require('../../modulable')(
   // the application structure
   __dirname + '/package.json'
   // inject some application specific configuration

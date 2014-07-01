@@ -5,7 +5,7 @@
   "dependencies": {
     "modular": "latest"
   },
-  "modular": {
+  "modulable": {
     "contains": {
       "web": "./modules/web/",
       "plugin": "./modules/plugin/"

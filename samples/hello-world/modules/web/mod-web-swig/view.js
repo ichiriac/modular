@@ -1,2 +1,2 @@
-module.exports = function(imports, modular) {
+module.exports = function(imports, modulable) {
 };

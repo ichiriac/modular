@@ -10,14 +10,14 @@ function resolveConf(instance) {
   if (typeof instance === 'string') {
     instance = require(instance);
   }
-  if (instance.hasOwnProperty('modular')) {
+  if (instance.hasOwnProperty('modulable')) {
     if (
-      !instance.modular.hasOwnProperty('name')
+      !instance.modulable.hasOwnProperty('name')
       && instance.hasOwnProperty('name')
     ) {
-      instance.modular.name = instance.name;
+      instance.modulable.name = instance.name;
     }
-    instance = instance.modular;
+    instance = instance.modulable;
   }
   return instance;
 }
@@ -156,7 +156,7 @@ var container = declare(
     this.name = name;
     this.path = basepath;
     // plugin modular interface
-    this.modular = {
+    this.modulable = {
       // registers a new plugin
       provides: function(container, pluginName) {
         if (!pluginName) {
@@ -202,9 +202,9 @@ var container = declare(
       var context = this;
       // resolve imports
       var imports = {};
-      if ( package.modular.hasOwnProperty('imports') ) {
-        for(var i in package.modular.imports) {
-          var imp = package.modular.imports[i].split('.', 2);
+      if ( package.modulable.hasOwnProperty('imports') ) {
+        for(var i in package.modulable.imports) {
+          var imp = package.modulable.imports[i].split('.', 2);
           var k;
           var j;
           if (imp.length == 2) {
@@ -226,7 +226,7 @@ var container = declare(
       } catch(e) {
         throw new Error(this.name + '/' + name + ' error ' + e.message + "\n\n** Caused by : " + e.stack + "\n\n--- Final error :");
       }
-      cb(imports, this.modular);
+      cb(imports, this.modulable);
     };
   }, {
     instances: {},

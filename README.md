@@ -1,8 +1,7 @@
-Modular
-=======
+Modulable
+=========
 
-Modular is the easy way to bootstrap and create an modular, customisable and extensible
-applications.
+Modulable is the easy way to bootstrap and create a modular, customisable and extensible app.
 
 The main principle of this plugin is :
 
@@ -12,8 +11,8 @@ The main principle of this plugin is :
  - you app loads modules
  - you must use a standard sequence of events to launch core modules (bootstrap)
 
-Modular is strongly based on NPM, and provides a common layer between
-the app it's modules and common NodeJS components like express, swig, etc ...
+Modulable is strongly based on NPM, and provides a common layer between
+the app, it's modules and common NodeJS components like express, swig, etc ...
 
 The main goals are :
 
@@ -27,7 +26,7 @@ A common way to start an application :
 
 ```
 // initialize the application
-var app = require('modular')(
+var app = require('modulable')(
   // the application structure
   __dirname + '/package.json'
   // inject some application specific configuration
@@ -51,13 +50,13 @@ At first install the modular NPM package as a global script, that will add some
 extra cli powers :
 
 ```
-npm install modular -g
+npm install modulable -g
 ```
 
 Go to the root of your project, and initialize your project with modular :
 
 ```
-modular --init
+modulable --init
 ```
 
 This command will :
@@ -70,15 +69,15 @@ This command will :
 After this setup, you will be able to add some extra packages :
 
 ```
-modular install mod-core-express --save
-modular install mod-core-swig --save
+modulable install mod-core-express --save
+modulable install mod-core-swig --save
 ```
 
 And also create some plugins for your app :
 
 ```
-modular create plugin:hello --save
-modular create plugin:world --save
+modulable create plugin:hello --save
+modulable create plugin:world --save
 ```
 
 ---

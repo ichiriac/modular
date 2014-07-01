@@ -2,7 +2,7 @@
   "name": "mod-web-swig",
   "version": "0.0.0",
   "main": "view.js",
-  "modular": {
+  "modulable": {
     "provides": {
       "web": "view"
     },

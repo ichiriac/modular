@@ -2,7 +2,7 @@
   "name": "mod-web-express",
   "version": "0.0.0",
   "main": "app.js",
-  "modular": {
+  "modulable": {
     "provides": {
       "web": "app"
     }

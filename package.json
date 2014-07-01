@@ -1,21 +1,22 @@
 {
-  "name": "modular",
+  "name": "modulable",
   "version": "0.0.1",
-  "description": "Easy way to create modular NodeJS apps",
-  "main": "modular.js",
+  "description": "Easy way to create modulable apps",
+  "main": "modulable.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": ["module manager", "dependency manager", "IoC"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/ichiriac/modular.git"
+    "url": "https://github.com/m0dul4r/modulable.git"
   },
   "author": "Ioan CHIRIAC",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ichiriac/modular/issues"
+    "url": "https://github.com/m0dul4r/modulable/issues"
   },
-  "homepage": "https://github.com/ichiriac/modular",
+  "homepage": "https://github.com/m0dul4r/modulable",
   "dependencies": {
     "lodash": "^2.4.1"
   }

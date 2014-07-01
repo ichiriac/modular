@@ -1,8 +1,7 @@
 // initialize the app
-module.exports = function(imports, modular) {
-  console.log(imports);
+module.exports = function(imports, modulable) {
   // registers a new module
-  modular.provides('hello')
+  modulable.provides('hello')
     .on('start', function() {
       imports.web.app.instance().get(
         '/', function(req, res) {
