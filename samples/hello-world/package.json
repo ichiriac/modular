@@ -3,22 +3,15 @@
   "version": "0.0.0",
   "main": "app.js",
   "dependencies": {
-    "modular": "latest"
+    "modular": "latest",
+    "mod-core-express": "latest",
+    "mod-core-swig": "latest"
   },
   "modulable": {
-    "contains": {
-      "web": "./modules/web/",
-      "plugin": "./modules/plugin/"
-    },
+    "path": "./modules",
     "using": {
-      "web": {
-        "mod-web-express": "latest",
-        "mod-web-swig": "latest"
-      },
-      "plugin": {
-        "hello": "latest",
-        "world": "latest"
-      }
+      "hello": "latest",
+      "world": "latest"
     }
   }
 }

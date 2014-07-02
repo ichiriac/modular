@@ -1,2 +1,4 @@
 node_modules
 /npm-debug.log
+/samples/hello-world/modules/mod-core-express
+/samples/hello-world/modules/mod-core-swig

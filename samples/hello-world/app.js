@@ -9,10 +9,8 @@ var app = require('../../modulable')(
 
 // run the application :
 app
-  // initialize the http mode
-  .trigger('web', 'init')
-  // initialize each plugin
-  .trigger('plugin', 'start')
-  // starts the application in http mode
-  .trigger('web', 'start')
+  // initialize each module
+  .trigger('init')
+  // and starts the app
+  .trigger('start')
 ;

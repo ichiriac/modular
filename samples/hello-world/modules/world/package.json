@@ -6,8 +6,8 @@
     "provides": {
       "plugin": "world"
     },
-    "imports": [
-      "web.app"
+    "consumes": [
+      "core.app"
     ]
   }
 }

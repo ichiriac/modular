@@ -6,8 +6,8 @@
     "provides": {
       "plugin": "hello"
     },
-    "imports": [
-      "web.app"
+    "consumes": [
+      "core": "app"
     ]
   }
 }

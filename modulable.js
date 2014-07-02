@@ -1,5 +1,7 @@
+
 var path = require('path');
-var _    = require('lodash');
+var _    = require('extend');
+var fs   = require('fs');
 
 /**
  * Resolving a configuration instance
@@ -7,20 +9,26 @@ var _    = require('lodash');
  * @return Object
  */
 function resolveConf(instance) {
-  if (typeof instance === 'string') {
-    instance = require(instance);
-  }
+  if (typeof instance === 'string') instance = require(instance);
   if (instance.hasOwnProperty('modulable')) {
-    if (
-      !instance.modulable.hasOwnProperty('name')
-      && instance.hasOwnProperty('name')
-    ) {
+    if (!instance.modulable.hasOwnProperty('name') && instance.hasOwnProperty('name')) {
       instance.modulable.name = instance.name;
+    }
+    if (!instance.modulable.hasOwnProperty('main')) {
+      if (instance.hasOwnProperty('main')) {
+        instance.modulable.main = instance.main;
+      } else {
+        instance.modulable.main = 'main.js';
+      }
+    }
+    if (instance.modulable.hasOwnProperty('using') && instance.hasOwnProperty('dependencies')) {
+      _(true, instance.modulable.using, instance.dependencies);
     }
     instance = instance.modulable;
   }
   return instance;
 }
+
 /**
  * Tiny class helper
  */
@@ -42,41 +50,52 @@ var app = declare(
   function(package, config) {
 
     // working directory
-    var root = process.cwd();
+    this.path.root = process.cwd();
+
     if (typeof package === 'string') {
       // relative to json file (if set)
-      root = path.dirname(package);
+      this.path.root = path.dirname(package);
     }
 
     // reads the configuration
     package = resolveConf(package);
 
+    // gets the modules root path
+    this.path.modules =  path.resolve(
+      this.path.root, 
+      package.path || './modules'
+    );
+
     // initialize configuration
-    if (typeof config === 'string') {
-      config = resolveConf(config);
-    }
-    this.config = config;
+    this.configure(config || {});
 
-    // initialize containers
-    for(var i in package.contains) {
-      this.register(
-        i
-        , path.resolve(root, package.contains[i])
-      );
-    }
-
-    // initialize modules
-    for(var container in package.using) {
-      for(var module in package.using[container]) {
-        this.get(container).load(module);
+    // loads each module
+    var modules = [];
+    for(var module in package.using) {
+      module = this.load(module);
+      if (module) {
+        modules.push(module);
       }
     }
-    
+
+    // 
+
   }, {
+
     // list of plugin containers
     containers: {}
+
     // configuration
     ,config: {}
+
+    // path configuration
+    ,path: [
+      // working directory
+      root: null
+      // modules root directory
+      ,modules: null
+    }
+
     /**
      * Iterate over each container
      * @returns {app}
@@ -86,42 +105,98 @@ var app = declare(
         cb(this.containers[i]);
       }
       return this;
-    },
+    }
+
     /**
      * Retrieves a modules container by its type
      * @param {String} name
-     * @return {container}
+     * @return {container|plugin}
      */
-    get: function(name) {
-      if (!this.containers.hasOwnProperty(name)) {
-        throw new Error('Undefined container type : ' + name);
+    ,get: function(name) {
+      name = name.split('.', 2);
+      if (!this.containers.hasOwnProperty(name[0])) {
+        throw new Error('Undefined container type : ' + name[0]);
       }
-      return this.containers[name];
-    },
+      return name.length === 2 ? this.containers[name[0]].get(name[1]) : this.containers[name[0]];
+    }
+
+    /**
+     * Starts to use the specified module
+     * @params String The module name (directory name)
+     * @params String The full location to the package.json file
+     */
+    ,load: function(module, package) {
+      var basedir = this.path.modules + '/' + module;
+      if (!package) {
+        if (!fs.existsSync(basedir + '/package.json')) {
+          // fallback on node_modules from npm
+          basedir = this.path.root + '/node_modules/' + module;
+        }
+        package = basedir + '/package.json';
+      } else {
+        basedir = path.dirname(package);
+      }
+
+      // require the package.json
+      if (!fs.existsSync(package)) {
+        if (fs.existsSync(basedir)) {
+          throw new Error('Unable to locate the package.json file for module ' + module + ' ! Try "npm update" to update your modules ...');
+        } else {
+          throw new Error('Unable to locate module ' + module + ' ! Try "npm install ' + module + '" ...');
+        }
+      }
+      package = require(package);
+
+      // check if it's a modulable package, and if not ignore it
+      if (
+        package && package.hasOwnProperty('modulable') && (
+          // if a package does not provides or consume anything, leave it alone and ignore it
+          package.modulable.hasOwnProperty('provides')
+          || package.modulable.hasOwnProperty('consumes')
+        )
+      ) {
+
+        // resolve the package configuration
+        package = resolveConf(package);
+
+        // returns the package entry
+        return {
+          meta: package,
+          path: basedir,
+          init: require( path.resolve(basedir, package.main) )
+        };
+      }
+    }
+
     /**
      * Registers a new module container
-     * @param Object
-     * @return {container}
+     * @param String|Object
      */
-    register: function(name, path, options) {
-      if (this.config.hasOwnProperty(name)) {
-        options = _.merge(this.config[name], options);
+    ,register: function(module) {
+    
+      // if passing a module name, loads it
+      if (typeof module === 'string') {
+        var modConf = this.load(module);
+        if (!modConf) {
+          throw new Error('Unable to load "' + module + '" as a modulable component !');
+        } else {
+          module = modConf;
+        }
       }
-      if (this.containers.hasOwnProperty(name)) {
-        this.containers[name].path(path);
-      } else {
-        this.containers[name] = new container(this, name, path);
-      }
-      this.containers[name].configure(options);
+      
+      
+      
       return this;
     }
+
     /**
      * Retrieves a module
      * @params String The module name
      * @return Object
      */
     ,configure: function(options) {
-      this.config = _.merge(this.config, resolveConf(options));
+      _(true, this.config, resolveConf(options));
+      // send configuration notification to each component
       for(var i in this.config) {
         if (this.containers.hasOwnProperty(i)) {
           this.containers[i].configure(this.config[i]);
@@ -129,6 +204,7 @@ var app = declare(
       }
       return this;
     }
+
     /**
      * Triggers an event over the specified container
      */
@@ -238,7 +314,7 @@ var container = declare(
      * Configures each module
      */
     configure: function(options) {
-      this.config = _.merge(this.config, options);
+      _(true, this.config, options);
       
     },
     /**
@@ -303,8 +379,8 @@ var plugin = declare(
     config: {}
     ,events: {}
     // adds some configuration
-    ,config: function(options) {
-      this.config = _.merge(this.config, options);
+    ,configure: function(options) {
+      _(true, this.config, options);
       return this
     }
     // listen an event
