@@ -1,0 +1,6 @@
+[submodule "samples/hello-world/modules/mod-core-express"]
+	path = samples/hello-world/modules/mod-core-express
+	url = https://github.com/m0dul4r/core-express.git
+[submodule "samples/hello-world/modules/mod-core-swig"]
+	path = samples/hello-world/modules/mod-core-swig
+	url = https://github.com/m0dul4r/core-swig.git
