@@ -2,12 +2,12 @@
   "name": "world",
   "version": "0.0.0",
   "main": "world.js",
-  "modulable": {
-    "provides": {
-      "plugin": "world"
-    },
+  "plugin": {
+    "provides": [
+      "plugin.world"
+    ],
     "consumes": [
-      "core.app"
+      "core.router"
     ]
   }
 }

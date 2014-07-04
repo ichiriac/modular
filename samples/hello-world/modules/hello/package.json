@@ -2,12 +2,12 @@
   "name": "hello",
   "version": "0.0.0",
   "main": "hello.js",
-  "modulable": {
-    "provides": {
-      "plugin": "hello"
-    },
+  "plugin": {
+    "provides": [
+      "plugin.hello"
+    ],
     "consumes": [
-      "core": "app"
+      "core.router"
     ]
   }
 }

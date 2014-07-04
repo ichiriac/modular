@@ -1,7 +1,8 @@
 
 var path = require('path');
-var _    = require('extend');
+var sort = require('toposort');
 var fs   = require('fs');
+var _    = require('extend');
 
 /**
  * Resolving a configuration instance
@@ -9,7 +10,7 @@ var fs   = require('fs');
  * @return Object
  */
 function resolveConf(instance) {
-  if (typeof instance === 'string') instance = require(instance);
+  if (typeof instance === 'string') instance = readJson(instance);
   if (instance.hasOwnProperty('modulable')) {
     if (!instance.modulable.hasOwnProperty('name') && instance.hasOwnProperty('name')) {
       instance.modulable.name = instance.name;
@@ -28,16 +29,36 @@ function resolveConf(instance) {
   }
   return instance;
 }
+/**
+ * Helper for reading a JSON file
+ */
+function readJson(filename) {
+  if (fs.existsSync(filename)) {
+    try {
+      return JSON.parse(fs.readFileSync(filename));
+    } catch(e) {
+      throw new Error('Parsing error in : ' + filename + '\n\nReason : ' + e.message);
+    }
+  } else {
+    throw new Error('Unable to locate file : ' + filename);
+  }
+}
+/**
+ * Helper for listing an object properties
+ */ 
+function getProps(obj) {
+  var result = [];
+  for(var v in obj) {
+    if (obj.hasOwnProperty(v)) result.push(v);
+  }
+  return result;
+}
 
 /**
  * Tiny class helper
  */
 function declare(fn, structure){
-  var def = {};
-  for(var i in structure) {
-    def[i] = structure[i];
-  }
-  fn.prototype = def;
+  fn.prototype = structure;
   fn.prototype.constructor = fn;
   return fn;
 };
@@ -70,15 +91,77 @@ var app = declare(
     this.configure(config || {});
 
     // loads each module
-    var modules = [];
+    var modules = {};
+    var edges = [];
+    var provides = {};
     for(var module in package.using) {
       module = this.load(module);
       if (module) {
-        modules.push(module);
+        modules[module.meta.name] = module;
+        if (
+          module.meta.plugin.hasOwnProperty('provides')
+          && module.meta.plugin.provides.length > 0
+        ) {
+          for(var i in module.meta.plugin.provides) {
+            i = module.meta.plugin.provides[i];
+            if (provides.hasOwnProperty(i)) {
+              throw new Error(
+                "Module '" + module.meta.name + "' could not provide '" + i + "', service already provided by module '" + provides[i] + "'"
+              );
+            } else {
+              provides[i] = module.meta.name;
+            }
+          }
+        }
+        if (
+          (
+            !module.meta.plugin.hasOwnProperty('consumes')
+            || module.meta.plugin.consumes.length == 0
+          ) && (
+            !module.meta.plugin.hasOwnProperty('extends')
+            || module.meta.plugin.extends.length == 0
+          )
+        ) {
+          edges.push([module.meta.name, '*']);
+        }
       }
     }
 
-    // 
+    // resolve dependencies
+    for(var m in modules) {
+      module = modules[m];
+      if (module.meta.plugin.hasOwnProperty('consumes')) {
+        for(var c in module.meta.plugin.consumes) {
+          c = module.meta.plugin.consumes[c];
+          if (!provides.hasOwnProperty(c)) {
+            throw new Error(
+              'Unable to resolve service dependency \''+c+'\' for module \'' + module.meta.name + '\''
+            );
+          }
+          edges.push([provides[c], module.meta.name]);
+        }
+      }
+      if (module.meta.plugin.hasOwnProperty('extends')) {
+        for(var c in module.meta.plugin.extends) {
+          c = module.meta.plugin.extends[c];
+          if (!provides.hasOwnProperty(c)) {
+            throw new Error(
+              'Unable to resolve service dependency \''+c+'\' for module \'' + module.meta.name + '\''
+            );
+          }
+          edges.push([provides[c], module.meta.name]);
+        }
+      }
+    }
+    edges = sort(edges); // sort
+
+    // loading each module and its services
+    for(var m = 0; m < edges.length; m++) {
+      if (edges[m] != '*') {
+        this.register(modules[edges[m]]);
+      }
+    }
+    this.trigger('ready');
 
   }, {
 
@@ -89,7 +172,7 @@ var app = declare(
     ,config: {}
 
     // path configuration
-    ,path: [
+    ,path: {
       // working directory
       root: null
       // modules root directory
@@ -145,20 +228,16 @@ var app = declare(
           throw new Error('Unable to locate module ' + module + ' ! Try "npm install ' + module + '" ...');
         }
       }
-      package = require(package);
+      package = readJson(package);
 
       // check if it's a modulable package, and if not ignore it
       if (
-        package && package.hasOwnProperty('modulable') && (
+        package && package.hasOwnProperty('plugin') && (
           // if a package does not provides or consume anything, leave it alone and ignore it
-          package.modulable.hasOwnProperty('provides')
-          || package.modulable.hasOwnProperty('consumes')
+          package.plugin.hasOwnProperty('provides')
+          || package.plugin.hasOwnProperty('consumes')
         )
       ) {
-
-        // resolve the package configuration
-        package = resolveConf(package);
-
         // returns the package entry
         return {
           meta: package,
@@ -183,9 +262,93 @@ var app = declare(
           module = modConf;
         }
       }
-      
-      
-      
+
+      // prepare imports
+      var imports = {};
+      var expecting = {};
+      if (module.meta.plugin.hasOwnProperty('consumes')) {
+        for(var c in module.meta.plugin.consumes) {
+          c = module.meta.plugin.consumes[c].split('.', 2);
+          if (!imports.hasOwnProperty(c[0])) {
+            imports[c[0]] = {};
+          } 
+          imports[c[0]][c[1]] = this.containers[c[0]].get(c[1]);
+        }
+      }
+      if (module.meta.plugin.hasOwnProperty('extends')) {
+        for(var c in module.meta.plugin.extends) {
+          c = module.meta.plugin.extends[c];
+          expecting[c] = true;
+          c = c.split('.', 2);
+          if (!imports.hasOwnProperty(c[0])) {
+            imports[c[0]] = {};
+          } 
+          imports[c[0]][c[1]] = this.containers[c[0]].get(c[1]);
+        }
+      } else {
+        module.meta.plugin.extends = [];
+      }
+      if (module.meta.plugin.hasOwnProperty('provides')) {
+        for(var c in module.meta.plugin.provides) {
+          c = module.meta.plugin.provides[c];
+          expecting[c] = true;
+        }
+      }
+
+      // gets the module definition
+      var instance = module.init(imports);
+
+      // register each service
+      if (getProps(expecting).length > 0) {
+        for(var c in instance) { 
+          // container
+          if (!this.containers.hasOwnProperty(c)) {
+            console.log('* Register service container ' + c);
+            this.containers[c] = new container(this, c);
+          }
+          for(var s in instance[c]) {
+            var modName = c + '.' + s;
+            if (!expecting.hasOwnProperty(modName)) {
+              throw new Error(
+                module.meta.name + ' error : undeclared "'+modName+'" service, must declare them with "provides" in the package.json file !' 
+              );
+            } else {
+              expecting[modName] = false; // unflag
+            }
+            // service
+            var service = instance[c][s];
+            // check the service status
+            if (module.meta.plugin.extends.indexOf(modName) > -1) {
+              if(!this.containers[c].contains(s)) {
+                throw new Error(
+                  module.meta.name + ' error : could not extends "' + modName + '", undefined service !'
+                );
+              }
+            } else if(this.containers[c].contains(s) ) { // try to define
+              throw new Error(
+                module.meta.name + ' error : could not define "' + modName + '", already defined by another module !'
+              );
+            }
+            console.log(' - register ' + modName);
+            this.containers[c].register(s, service);
+          }
+        }
+        // check if remain flags
+        var remains = [];
+        for(var c in expecting) {
+          if (expecting[c]) remains.push(c); 
+        }
+        if (remains.length > 0) {
+          throw new Error(
+            module.meta.name + ' error : missing services declaration - ' + remains.join(', ') + ' !' 
+          );
+        }
+      } else if (getProps(instance).length > 0) {
+        throw new Error(
+          module.meta.name + ' error : unable to export services, must declare them with "provides" in the package.json file !' 
+        );
+      }
+
       return this;
     }
 
@@ -196,7 +359,7 @@ var app = declare(
      */
     ,configure: function(options) {
       _(true, this.config, resolveConf(options));
-      // send configuration notification to each component
+      // send configuration notification to each container
       for(var i in this.config) {
         if (this.containers.hasOwnProperty(i)) {
           this.containers[i].configure(this.config[i]);
@@ -228,94 +391,24 @@ var app = declare(
 
 // defines a plugin container
 var container = declare(
-  function(app, name, basepath) {
+  function(app, name) {
     this.name = name;
-    this.path = basepath;
-    // plugin modular interface
-    this.modulable = {
-      // registers a new plugin
-      provides: function(container, pluginName) {
-        if (!pluginName) {
-          pluginName = container;
-          container = name;
-        }
-        container = app.get(container);
-        return container.register(
-          pluginName, new plugin(container, pluginName)
-        );
-      }
-      // extends an existing plugin
-      ,extends: function(container, pluginName, cb) {
-        if (!cb) {
-          cb = pluginName;
-          pluginName = container;
-          container = name;
-        }
-        container = app.get(container);
-        var parent = container.get(pluginName);
-        var result = container.register(
-          pluginName, new plugin(container, pluginName)
-        );
-        for(var i in parent) {
-          if (parent.hasOwnProperty(i)) {
-            result[i] = parent[i];
-          }
-        }
-        cb.apply(result, [parent]);
-        return result;
-      }
-      // provides a new plugin container
-      ,handles: function(container, path) {
-        return app.register(container, path).get(container);
-      }
-    };
-    /**
-     * Loads the specified package
-     */
-    this.load = function(name) {
-      var basedir = this.path + "/" + name;
-      var package = require(basedir + '/package.json');
-      var context = this;
-      // resolve imports
-      var imports = {};
-      if ( package.modulable.hasOwnProperty('imports') ) {
-        for(var i in package.modulable.imports) {
-          var imp = package.modulable.imports[i].split('.', 2);
-          var k;
-          var j;
-          if (imp.length == 2) {
-            k = imp[0];
-            j = imp[1];
-            imp = app.get(imp[0]).get(imp[1]);
-          } else {
-            k = name;
-            j = imp[0];
-            imp = this.get(imp[0]);
-          }
-          if (!imports.hasOwnProperty(k)) imports[k] = {};
-          imports[k][j] = imp;
-        }
-      }
-      // run the package
-      try {
-        var cb = require(path.resolve(basedir, package.main));
-      } catch(e) {
-        throw new Error(this.name + '/' + name + ' error ' + e.message + "\n\n** Caused by : " + e.stack + "\n\n--- Final error :");
-      }
-      cb(imports, this.modulable);
-    };
   }, {
     instances: {},
     modules: [],
     name: null,
-    path: null,
     config: {},
     /**
      * Configures each module
      */
     configure: function(options) {
       _(true, this.config, options);
-      
+      // send configuration notification to each service
+      for(var i in this.config) {
+        if (this.instances.hasOwnProperty(i)) {
+          this.instances[i].configure(this.config[i]);
+        }
+      }
     },
     /**
      * Gets the container type name
@@ -323,46 +416,47 @@ var container = declare(
      */
     type: function() {
       return this.name;
-    },
-    /**
-     * Gets/Sets the loading path for lookups
-     */
-    path: function(value) {
-      if (value) {
-        this.path = value;
-      }
-      return this.path;
-    },
+    }
     /**
      * Registers a structure
      */
-    register: function(name, instance) {
-      if (!this.instances.hasOwnProperty(name)) {
+    ,register: function(name, instance) {
+      if (this.contains(name)) {
+        this.instances[name].extends(instance);
+      } else {
+        console.log(this.name + ' > ' + this.modules.join(', '));
         this.modules.push(name);
+        this.instances[name] = new plugin(this, name, instance);
+        if (this.config.hasOwnProperty(name)) {
+          this.instances[name].configure(this.config[name]);
+        }
       }
-      this.instances[name] = instance;
-      return instance;
-    },
+      return this.instances[name];
+    }
     /**
      * Gets a plugin from its name
      */
-    get: function(plugin) {
-      if (!this.instances.hasOwnProperty(plugin)) {
-        throw new Error('Undefined plugin : ' + this.name + '.' + plugin);
+    ,get: function(service) {
+      if (!this.contains(service)) {
+        throw new Error('Undefined service : ' + this.name + '.' + service);
       }
-      return this.instances[plugin];
-    },
+      return this.instances[service];
+    }
+    // checks if the specified service is already defined
+    ,contains: function(service) {
+      return this.instances.hasOwnProperty(service);
+    }
     // iterator
-    each: function(cb) {
+    ,each: function(cb) {
       for(var i in this.modules) {
         cb(this.instances[this.modules[i]]);
       }
       return this;
-    },
+    }
     /**
      * triggers an event over each registered plugin
      */
-    trigger: function(event, options) {
+    ,trigger: function(event, options) {
       return this.each(function(plugin) {
         plugin.trigger(event, options);
       });
@@ -372,9 +466,9 @@ var container = declare(
 
 // the module definition 
 var plugin = declare(
-  function(container, name, config) {
+  function(container, name, definition) {
     this.name = name;
-    this.config(config);
+    this.extends(definition);
   }, {
     config: {}
     ,events: {}
@@ -401,10 +495,9 @@ var plugin = declare(
       }
       return this;
     }
-    // defines a new method
-    ,method: function(name, cb) {
-      this[name] = cb;
-      return this;
+    // extends current module
+    ,extends: function(structure) {
+      
     }
   }
 );

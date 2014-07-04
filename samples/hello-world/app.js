@@ -7,10 +7,8 @@ var app = require('../../modulable')(
   , __dirname + '/config.json'
 );
 
-// run the application :
-app
-  // initialize each module
-  .trigger('init')
-  // and starts the app
-  .trigger('start')
-;
+// and starts the app
+app.trigger('start');
+
+
+console.log(require('util').inspect(app.containers));

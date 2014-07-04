@@ -1,13 +1,19 @@
 // initialize the app
-module.exports = function(imports, modulable) {
+module.exports = function(imports) {
+  var router = imports.core.router;
   // registers a new module
-  modulable.provides('world')
-    .on('start', function() {
-      imports.web.app.instance().get(
-        '/', function(req, res) {
-          res.end('Hello World - from hello');
+  return {
+    plugin: {
+      world: {
+        on: {
+          ready: function() {
+            router.get(
+              '/', function(req, res) {
+              res.end('Hello World - from hello');
+            });
+          }
         }
-      );
-    })
-  ;
+      }
+    }
+  };
 };
