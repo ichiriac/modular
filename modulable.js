@@ -57,7 +57,7 @@ function getProps(obj) {
 /**
  * Tiny class helper
  */
-function declare(fn, structure){
+function declare(fn, structure) {
   fn.prototype = structure;
   fn.prototype.constructor = fn;
   return fn;
@@ -69,7 +69,20 @@ function declare(fn, structure){
 var app = declare(
   // constructor
   function(package, config) {
+    // list of plugin containers
+    this.containers = {};
 
+    // configuration
+    this.config = {};
+
+    // path configuration
+    this.path = {
+      // working directory
+      root: null
+      // modules root directory
+      ,modules: null
+    };
+    
     // working directory
     this.path.root = process.cwd();
 
@@ -86,9 +99,6 @@ var app = declare(
       this.path.root, 
       package.path || './modules'
     );
-
-    // initialize configuration
-    this.configure(config || {});
 
     // loads each module
     var modules = {};
@@ -161,29 +171,20 @@ var app = declare(
         this.register(modules[edges[m]]);
       }
     }
+
+    // initialize configuration
+    this.configure(config || {});
+
+    // all services are ready !
     this.trigger('ready');
 
   }, {
-
-    // list of plugin containers
-    containers: {}
-
-    // configuration
-    ,config: {}
-
-    // path configuration
-    ,path: {
-      // working directory
-      root: null
-      // modules root directory
-      ,modules: null
-    }
 
     /**
      * Iterate over each container
      * @returns {app}
      */
-    ,each: function(cb) {
+    each: function(cb) {
       for(var i in this.containers) {
         cb(this.containers[i]);
       }
@@ -303,7 +304,6 @@ var app = declare(
         for(var c in instance) { 
           // container
           if (!this.containers.hasOwnProperty(c)) {
-            console.log('* Register service container ' + c);
             this.containers[c] = new container(this, c);
           }
           for(var s in instance[c]) {
@@ -329,7 +329,6 @@ var app = declare(
                 module.meta.name + ' error : could not define "' + modName + '", already defined by another module !'
               );
             }
-            console.log(' - register ' + modName);
             this.containers[c].register(s, service);
           }
         }
@@ -358,12 +357,14 @@ var app = declare(
      * @return Object
      */
     ,configure: function(options) {
+      
       _(true, this.config, resolveConf(options));
       // send configuration notification to each container
       for(var i in this.config) {
-        if (this.containers.hasOwnProperty(i)) {
-          this.containers[i].configure(this.config[i]);
+        if (!this.containers.hasOwnProperty(i)) {
+          this.containers[i] = new container(this, i);
         }
+        this.containers[i].configure(this.config[i]);
       }
       return this;
     }
@@ -393,11 +394,10 @@ var app = declare(
 var container = declare(
   function(app, name) {
     this.name = name;
+    this.instances = {};
+    this.modules = [];
+    this.config = {};
   }, {
-    instances: {},
-    modules: [],
-    name: null,
-    config: {},
     /**
      * Configures each module
      */
@@ -424,7 +424,6 @@ var container = declare(
       if (this.contains(name)) {
         this.instances[name].extends(instance);
       } else {
-        console.log(this.name + ' > ' + this.modules.join(', '));
         this.modules.push(name);
         this.instances[name] = new plugin(this, name, instance);
         if (this.config.hasOwnProperty(name)) {
@@ -468,12 +467,12 @@ var container = declare(
 var plugin = declare(
   function(container, name, definition) {
     this.name = name;
+    this.config = {};
+    this.events = {};
     this.extends(definition);
   }, {
-    config: {}
-    ,events: {}
     // adds some configuration
-    ,configure: function(options) {
+    configure: function(options) {
       _(true, this.config, options);
       return this
     }
@@ -497,7 +496,30 @@ var plugin = declare(
     }
     // extends current module
     ,extends: function(structure) {
-      
+      // define a list of protected functions
+      var protected = [
+        'trigger', 'configure', 'events', 'name', 'extends'
+      ];
+      for(var m in structure) {
+        if (m === 'on') {
+          // registers events
+          for(var e in structure[m]) {
+            this.on(e, structure[m][e]);
+          }
+        } else if(m == 'config') {
+          // defines a default configuration
+          this.configure(structure[m]);
+        } else {
+          if (protected.indexOf(m) > -1) {
+            throw new Error(
+              'Can not define "' + m + '" method on "' + this.name + '" service !'
+            );
+          } else {
+            // registers a function
+            this[m] = structure[m];
+          }
+        }
+      }
     }
   }
 );
