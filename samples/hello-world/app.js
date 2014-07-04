@@ -11,4 +11,4 @@ var app = require('../../modulable')(
 app.trigger('start');
 
 
-console.log(require('util').inspect(app.containers));
+console.log('Server is started on ' + app.get('core.app').config.port);

@@ -2,6 +2,15 @@
   "core": {
     "app": {
       "port": 3000
+    },
+    "view": {
+      "path": "./template",
+      "template": "default",
+      "defaults": {
+        "title": "My Website Title",
+        "author": "John Doe",
+        "description": "Hello world from Modulable !"
+      }
     }
   }
 }

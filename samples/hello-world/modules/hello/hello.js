@@ -6,7 +6,7 @@ module.exports = function(imports) {
       hello: {
         on: {
           ready: function() {
-            router.get('/', function() {
+            router.get('/', function(req, res) {
               res.end('Hello World - from hello');
             });
           }

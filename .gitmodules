@@ -4,3 +4,6 @@
 [submodule "samples/hello-world/modules/mod-core-swig"]
 	path = samples/hello-world/modules/mod-core-swig
 	url = https://github.com/m0dul4r/core-swig.git
+[submodule "samples/hello-world/modules/mod-core-logger"]
+	path = samples/hello-world/modules/mod-core-logger
+	url = https://github.com/m0dul4r/core-logger.git
